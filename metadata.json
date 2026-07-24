@@ -1,0 +1,6 @@
+{
+  "name": "NAI Artist Mixer",
+  "description": "Mix Danbooru artists and custom photos into formatted prompt lists.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

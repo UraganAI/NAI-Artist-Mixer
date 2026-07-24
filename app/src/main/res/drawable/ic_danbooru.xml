@@ -1,0 +1,44 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Orange Outer Ellipse Background -->
+    <path
+        android:fillColor="#FF7A00"
+        android:pathData="M50,10 C78,10 95,28 95,52 C95,76 75,90 50,90 C22,90 5,74 5,50 C5,26 22,10 50,10 Z" />
+
+    <path
+        android:fillColor="#FFA726"
+        android:pathData="M50,14 C74,14 89,30 89,52 C89,72 71,85 50,85 C26,85 11,70 11,50 C11,28 26,14 50,14 Z" />
+
+    <!-- 3D Cube Outer Dark Brown Frame/Border (#230B00) -->
+    <path
+        android:fillColor="#230B00"
+        android:pathData="M50,22 L83,38 L83,72 L50,88 L17,72 L17,38 Z" />
+
+    <!-- Cube Top Face (#9C6B42) -->
+    <path
+        android:fillColor="#9C6B42"
+        android:pathData="M50,26 L77,39 L50,51 L23,39 Z" />
+
+    <!-- Cube Left Face (#845732) -->
+    <path
+        android:fillColor="#845732"
+        android:pathData="M22,42 L47,53 L47,82 L22,70 Z" />
+
+    <!-- Cube Right Face (#6E4522) -->
+    <path
+        android:fillColor="#6E4522"
+        android:pathData="M53,53 L78,42 L78,70 L53,82 Z" />
+
+    <!-- Cube Inner Edges (#230B00) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#230B00"
+        android:strokeWidth="4.5"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M50,26 L77,39 L50,51 L23,39 Z M50,51 V83 M23,39 V70 L50,82 L77,70 V39" />
+</vector>

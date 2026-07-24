@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Flame Fill (#FFF5C0) - Soft light yellow / warm cream matching NovelAI -->
+    <path
+        android:fillColor="#FFF5C0"
+        android:pathData="M50,2 C50,2 55,12 62,18 C68,12 78,11 82,21 C89,32 92,48 92,62 C92,81 77,96 50,96 C23,96 8,81 8,62 C8,44 18,31 29,22 C29,28 34,34 41,31 C40,20 46,9 50,2 Z" />
+
+    <!-- Cube Faces Fill (#FFF5C0) -->
+    <path
+        android:fillColor="#FFF5C0"
+        android:pathData="M50,33 L79,44 L79,74 L50,86 L21,74 L21,44 Z" />
+
+    <!-- Cube Inner Edges (#121221) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#121221"
+        android:strokeWidth="5"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M50,38 L73,46 L50,55 L27,46 Z M50,55 V81 M27,46 V71 L50,80 L73,71 V46" />
+</vector>
