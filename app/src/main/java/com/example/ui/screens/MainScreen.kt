@@ -467,9 +467,7 @@ fun MainScreen(
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Scaffold(
-            modifier = modifier
-                .fillMaxSize()
-                .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+            modifier = modifier.fillMaxSize(),
             topBar = {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     TopAppBar(
@@ -481,7 +479,9 @@ fun MainScreen(
                                 Surface(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                                    modifier = Modifier.size(38.dp)
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
