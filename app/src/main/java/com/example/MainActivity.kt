@@ -20,13 +20,26 @@ class MainActivity : ComponentActivity() {
     setContent {
       val viewModel: MainViewModel = viewModel()
       val appThemePreset by viewModel.appThemePreset.collectAsStateWithLifecycle()
-      val customPrimaryArgb by viewModel.customPrimaryColorArgb.collectAsStateWithLifecycle()
-      val customBgArgb by viewModel.customBgColorArgb.collectAsStateWithLifecycle()
+      val headerColorArgb by viewModel.headerColorArgb.collectAsStateWithLifecycle()
+      val paragraphColorArgb by viewModel.paragraphColorArgb.collectAsStateWithLifecycle()
+      val warningColorArgb by viewModel.warningColorArgb.collectAsStateWithLifecycle()
+      val foregroundColorArgb by viewModel.foregroundColorArgb.collectAsStateWithLifecycle()
+      val backgroundColorArgb by viewModel.backgroundColorArgb.collectAsStateWithLifecycle()
+      val darkBgColorArgb by viewModel.darkBgColorArgb.collectAsStateWithLifecycle()
+      val inputBgColorArgb by viewModel.inputBgColorArgb.collectAsStateWithLifecycle()
+      val headingsFont by viewModel.headingsFont.collectAsStateWithLifecycle()
+      val defaultFont by viewModel.defaultFont.collectAsStateWithLifecycle()
 
       PicPickerTheme(
         themePreset = appThemePreset,
-        customPrimaryColor = androidx.compose.ui.graphics.Color(customPrimaryArgb),
-        customBgColor = androidx.compose.ui.graphics.Color(customBgArgb)
+        headerColor = androidx.compose.ui.graphics.Color(headerColorArgb),
+        paragraphColor = androidx.compose.ui.graphics.Color(paragraphColorArgb),
+        foregroundColor = androidx.compose.ui.graphics.Color(foregroundColorArgb),
+        backgroundColor = androidx.compose.ui.graphics.Color(backgroundColorArgb),
+        darkBgColor = androidx.compose.ui.graphics.Color(darkBgColorArgb),
+        inputBgColor = androidx.compose.ui.graphics.Color(inputBgColorArgb),
+        headingsFont = headingsFont,
+        defaultFont = defaultFont
       ) {
         Surface(color = MaterialTheme.colorScheme.background) {
           MainScreen(viewModel = viewModel)

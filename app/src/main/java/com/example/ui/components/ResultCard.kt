@@ -3,6 +3,7 @@ package com.example.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
@@ -19,10 +20,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -43,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -59,7 +60,9 @@ fun ResultCard(
     onPickAgain: () -> Unit,
     onCopy: (String) -> Unit,
     modifier: Modifier = Modifier,
-    onShare: (String) -> Unit = {}
+    onShare: (String) -> Unit = {},
+    onTryNovelAi: ((artistTags: String) -> Unit)? = null,
+    onEditGenSettings: (() -> Unit)? = null
 ) {
     var copiedRecently by remember { mutableStateOf(false) }
 
@@ -74,11 +77,11 @@ fun ResultCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("result_card"),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.background
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -94,7 +97,7 @@ fun ResultCard(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(MaterialTheme.colorScheme.primary)
+                            .background(MaterialTheme.colorScheme.outline)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -103,7 +106,7 @@ fun ResultCard(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.2.sp
                         ),
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
 
@@ -131,23 +134,22 @@ fun ResultCard(
                     .fillMaxWidth()
                     .height(84.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
-                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.25f)
-                            )
-                        )
-                    )
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .border(
-                        width = 1.5.dp,
-                        color = if (copiedRecently) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        width = 1.dp,
+                        color = if (copiedRecently) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                         shape = RoundedCornerShape(16.dp)
                     )
                     .padding(12.dp)
                     .verticalScroll(textScrollState)
             ) {
-                val formattedText = result?.formattedString ?: "Press 'Pick Random Pictures' to start!"
+                val formattedText = if (result != null && result.formattedString.isNotBlank()) {
+                    result.formattedString
+                } else if (result != null && result.folderName.isNotBlank() && result.folderName != "No source selected") {
+                    "Add at least one artist to start mixing!"
+                } else {
+                    "Select an artist tag source to start mixing!"
+                }
                 Text(
                     text = formattedText,
                     style = MaterialTheme.typography.bodyLarge.copy(
@@ -199,18 +201,74 @@ fun ResultCard(
                 }
 
                 // Quick Shuffle Again
-                FilledTonalButton(
+                OutlinedButton(
                     onClick = onPickAgain,
                     modifier = Modifier.testTag("shuffle_button"),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onBackground
+                    )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Refresh,
+                        imageVector = Icons.Default.Casino,
                         contentDescription = "Re-pick",
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Re-roll", fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            if (result != null && result.formattedString.isNotBlank()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (onEditGenSettings != null) {
+                        OutlinedButton(
+                            onClick = onEditGenSettings,
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("edit_gen_settings_button"),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onBackground
+                            )
+                        ) {
+                            Text(
+                                text = "Edit Gen Settings",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+
+                    if (onTryNovelAi != null) {
+                        Button(
+                            onClick = { onTryNovelAi(result.formattedString) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("try_novelai_button"),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = "Try Mix",
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Try Mix",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
                 }
             }
         }

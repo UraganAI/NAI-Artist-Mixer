@@ -2,40 +2,72 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// NovelAI Signature Palette (Matching NovelAI Web Interface)
-val NovelAiBg = Color(0xFF10111E)
-val NovelAiSurface = Color(0xFF1A1C2E)
-val NovelAiSurfaceVariant = Color(0xFF23263E)
-val NovelAiPrimary = Color(0xFFFAECC0) // Warm Cream/Gold Yellow button
-val NovelAiOnPrimary = Color(0xFF161722)
-val NovelAiPrimaryContainer = Color(0xFF2E3252)
-val NovelAiOnPrimaryContainer = Color(0xFFFBF2D8)
-val NovelAiSecondary = Color(0xFF8D93C8)
-val NovelAiOutline = Color(0xFF333758)
+// NovelAI Dark Palette
+val NovelAiBg = Color(0xFF0E0F21)
+val NovelAiSurface = Color(0xFF13152C)
+val NovelAiSurfaceVariant = Color(0xFF191B31)
+val NovelAiPrimary = Color(0xFFF5F3C2)
+val NovelAiOnPrimary = Color(0xFF0E0F21)
 
-// Midnight Violet Palette
-val MidnightBg = Color(0xFF0F0B1E)
-val MidnightSurface = Color(0xFF191330)
-val MidnightSurfaceVariant = Color(0xFF251C44)
-val MidnightPrimary = Color(0xFFB388FF)
-val MidnightOnPrimary = Color(0xFF1A004B)
-val MidnightPrimaryContainer = Color(0xFF4A148C)
-val MidnightOnPrimaryContainer = Color(0xFFEA80FC)
+// NovelAI Dark (Legacy) Palette
+val NovelAiLegacyBg = Color(0xFF181A2A)
+val NovelAiLegacySurface = Color(0xFF212438)
+val NovelAiLegacySurfaceVariant = Color(0xFF2B2E47)
+val NovelAiLegacyPrimary = Color(0xFFFAECC0)
+val NovelAiLegacyOnPrimary = Color(0xFF181A2A)
 
-// Classic Slate Palette
-val SlateBg = Color(0xFF14171A)
-val SlateSurface = Color(0xFF1E2328)
-val SlateSurfaceVariant = Color(0xFF2B313A)
-val SlatePrimary = Color(0xFF64FFDA)
-val SlateOnPrimary = Color(0xFF00271D)
-val SlatePrimaryContainer = Color(0xFF004D40)
-val SlateOnPrimaryContainer = Color(0xFFA7FFEB)
+// NovelAI Light Palette
+val NovelAiLightBg = Color(0xFFD3D0DB)
+val NovelAiLightSurface = Color(0xFFE2E0E8)
+val NovelAiLightSurfaceVariant = Color(0xFFEEECF4)
+val NovelAiLightPrimary = Color(0xFF855611)
+val NovelAiLightOnPrimary = Color(0xFFFFFFFF)
 
-// Light Modern Palette
-val LightBg = Color(0xFFF6F7FA)
-val LightSurface = Color(0xFFFFFFFF)
-val LightSurfaceVariant = Color(0xFFECEFF6)
-val LightPrimary = Color(0xFF534BAE)
-val LightOnPrimary = Color(0xFFFFFFFF)
-val LightPrimaryContainer = Color(0xFFE8E5FF)
-val LightOnPrimaryContainer = Color(0xFF170D63)
+// Bubblegum Palette
+val BubblegumBg = Color(0xFFF0BDE2)
+val BubblegumSurface = Color(0xFFFCE4F3)
+val BubblegumSurfaceVariant = Color(0xFFEBB8DD)
+val BubblegumPrimary = Color(0xFF546EE5)
+val BubblegumOnPrimary = Color(0xFFFFFFFF)
+
+// Gruvbox Dark Palette
+val GruvboxDarkBg = Color(0xFF1E1E1E)
+val GruvboxDarkSurface = Color(0xFF282828)
+val GruvboxDarkSurfaceVariant = Color(0xFF32302F)
+val GruvboxDarkPrimary = Color(0xFFA2B32B)
+val GruvboxDarkOnPrimary = Color(0xFF1E1E1E)
+
+// Ink Palette
+val InkBg = Color(0xFFE5E1D3)
+val InkSurface = Color(0xFFF0EDE3)
+val InkSurfaceVariant = Color(0xFFF5F2E8)
+val InkPrimary = Color(0xFF0A1465)
+val InkOnPrimary = Color(0xFFFFFFFF)
+
+// Midnight Doll Palette
+val MidnightDollBg = Color(0xFF050505)
+val MidnightDollSurface = Color(0xFF121212)
+val MidnightDollSurfaceVariant = Color(0xFF1E1E1E)
+val MidnightDollPrimary = Color(0xFFFF1A8C)
+val MidnightDollOnPrimary = Color(0xFFFFFFFF)
+
+// Purple Noir Palette
+val PurpleNoirBg = Color(0xFF13102C)
+val PurpleNoirSurface = Color(0xFF1E1A42)
+val PurpleNoirSurfaceVariant = Color(0xFF2A2556)
+val PurpleNoirPrimary = Color(0xFFD2FA00) // Lime Yellow Green
+val PurpleNoirOnPrimary = Color(0xFF13102C)
+
+// Sagiri Palette
+val SagiriBg = Color(0xFFF5CEE0)
+val SagiriSurface = Color(0xFFFAECF4)
+val SagiriSurfaceVariant = Color(0xFFEAC1D5)
+val SagiriPrimary = Color(0xFF4E8264)
+val SagiriOnPrimary = Color(0xFFFFFFFF)
+
+// Vibrowave Palette
+val VibrowaveBg = Color(0xFF0C0827)
+val VibrowaveSurface = Color(0xFF16103C)
+val VibrowaveSurfaceVariant = Color(0xFF20184E)
+val VibrowavePrimary = Color(0xFFEA2280)
+val VibrowaveOnPrimary = Color(0xFFFFFFFF)

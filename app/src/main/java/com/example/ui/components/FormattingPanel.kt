@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -57,8 +58,9 @@ fun FormattingPanel(
         modifier = modifier
             .fillMaxWidth()
             .testTag("formatting_panel_card"),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -73,7 +75,7 @@ fun FormattingPanel(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "SELECTION & FORMATTING SETTINGS",
+                    text = "FORMATTING SETTINGS",
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.2.sp
@@ -84,54 +86,7 @@ fun FormattingPanel(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. Quantity Selector N
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Number of Pictures to Pick",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                    Text(
-                        text = "Pick $requestedCount out of ${if (totalAvailable > 0) totalAvailable else "N/A"} photos",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-
-                // Stepper Buttons (- N +)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { onCountChange(requestedCount - 1) },
-                        enabled = canDecrement && requestedCount > 1,
-                        modifier = Modifier.testTag("decrement_count_button")
-                    ) {
-                        Icon(imageVector = Icons.Default.Remove, contentDescription = "Decrease")
-                    }
-
-                    Text(
-                        text = "$requestedCount",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .testTag("requested_count_text")
-                    )
-
-                    IconButton(
-                        onClick = { onCountChange(requestedCount + 1) },
-                        modifier = Modifier.testTag("increment_count_button")
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Increase")
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 2. Prefix Category
+            // 1. Prefix Category
             Text(
                 text = "Prefix",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
@@ -139,17 +94,32 @@ fun FormattingPanel(
 
             Spacer(modifier = Modifier.height(6.dp))
 
+            val customChipColors = FilterChipDefaults.filterChipColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                labelColor = MaterialTheme.colorScheme.onBackground,
+                selectedContainerColor = MaterialTheme.colorScheme.outline,
+                selectedLabelColor = MaterialTheme.colorScheme.background
+            )
+
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 TagPrefix.values().forEach { prefixOpt ->
+                    val isSelected = formattingOptions.tagPrefix == prefixOpt
                     FilterChip(
-                        selected = formattingOptions.tagPrefix == prefixOpt,
+                        selected = isSelected,
                         onClick = {
                             onFormattingOptionsChange(formattingOptions.copy(tagPrefix = prefixOpt))
                         },
                         label = { Text(prefixOpt.label) },
+                        colors = customChipColors,
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = MaterialTheme.colorScheme.outline,
+                            selectedBorderColor = MaterialTheme.colorScheme.outline
+                        ),
                         modifier = Modifier.testTag("prefix_chip_${prefixOpt.name}")
                     )
                 }
@@ -230,12 +200,20 @@ fun FormattingPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SeparatorType.values().forEach { sep ->
+                    val isSelected = formattingOptions.separatorType == sep
                     FilterChip(
-                        selected = formattingOptions.separatorType == sep,
+                        selected = isSelected,
                         onClick = {
                             onFormattingOptionsChange(formattingOptions.copy(separatorType = sep))
                         },
                         label = { Text(sep.label) },
+                        colors = customChipColors,
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = MaterialTheme.colorScheme.outline,
+                            selectedBorderColor = MaterialTheme.colorScheme.outline
+                        ),
                         modifier = Modifier.testTag("separator_chip_${sep.name}")
                     )
                 }
@@ -272,13 +250,21 @@ fun FormattingPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 TextCasing.values().forEach { case ->
+                    val isSelected = formattingOptions.casing == case
                     FilterChip(
-                        selected = formattingOptions.casing == case,
+                        selected = isSelected,
                         enabled = !isNaxMoe,
                         onClick = {
                             onFormattingOptionsChange(formattingOptions.copy(casing = case))
                         },
                         label = { Text(case.label) },
+                        colors = customChipColors,
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = !isNaxMoe,
+                            selected = isSelected,
+                            borderColor = MaterialTheme.colorScheme.outline,
+                            selectedBorderColor = MaterialTheme.colorScheme.outline
+                        ),
                         modifier = Modifier.testTag("case_chip_${case.name}")
                     )
                 }

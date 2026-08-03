@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.Animatable
@@ -28,7 +29,9 @@ import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Sync
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -62,8 +65,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.R
@@ -128,8 +135,21 @@ fun MatchArtistDialog(
         }
     }
 
+    var toastMessage by remember { mutableStateOf<String?>(null) }
+    var showMatchTagDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(toastMessage) {
+        if (toastMessage != null) {
+            kotlinx.coroutines.delay(2200)
+            toastMessage = null
+        }
+    }
+
     fun advanceToNextCard(isMatch: Boolean) {
         val artist = currentCard ?: return
+        if (isMatch) {
+            toastMessage = "Liked '${artist.fileName}'! Added to favorites ❤️"
+        }
         viewModel.swipeArtist(artist.fileName, isMatch)
 
         // Reset card state for next card
@@ -154,8 +174,9 @@ fun MatchArtistDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.88f)
@@ -172,39 +193,64 @@ fun MatchArtistDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(38.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_match_artist),
                                     contentDescription = null,
                                     tint = Color.Unspecified,
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(26.dp)
                                 )
                             }
                         }
+
                         Spacer(modifier = Modifier.width(10.dp))
-                        Column {
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(26.dp)
+                                .background(MaterialTheme.colorScheme.outline)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Match your Artist",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
                                 text = "Swipe right to favorite • Swipe left to pass",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                             )
                         }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(26.dp)
+                                .background(MaterialTheme.colorScheme.outline)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                     }
 
                     IconButton(onClick = onDismiss) {
                         Icon(imageVector = Icons.Default.Clear, contentDescription = "Close")
                     }
                 }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 1.dp)
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -366,7 +412,7 @@ fun MatchArtistDialog(
                                     }
                                 }
 
-                                // Overlay Swipe Feedback Badges (MATCH / PASS)
+                                // Overlay Swipe Feedback Badges (LIKE / PASS)
                                 if (animOffsetX.value > 80f) {
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
@@ -377,7 +423,7 @@ fun MatchArtistDialog(
                                             .rotate(-12f)
                                     ) {
                                         Text(
-                                            text = "MATCH ❤️",
+                                            text = "LIKE ❤️",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 20.sp,
                                             color = Color.White,
@@ -479,6 +525,7 @@ fun MatchArtistDialog(
                             },
                             enabled = buttonEnabled,
                             shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                             contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -524,6 +571,7 @@ fun MatchArtistDialog(
                                     context.startActivity(intent)
                                 },
                                 shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                                 modifier = Modifier
                                     .weight(1f)
@@ -547,6 +595,7 @@ fun MatchArtistDialog(
                             OutlinedButton(
                                 onClick = { randomArtArtistName = currentCard.fileName },
                                 shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                                 modifier = Modifier
                                     .weight(1f)
@@ -567,45 +616,132 @@ fun MatchArtistDialog(
                             }
                         }
 
-                        // Row 3: Pass (X) / Match (Heart) Buttons - Bigger size and icon
-                        Row(
+                        // Row 3: Pass (X) / Match (Heart) / Tag Buttons
+                        Box(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
+                            contentAlignment = Alignment.Center
                         ) {
-                            // Pass Button (Red X)
-                            Button(
-                                onClick = { triggerSwipe(isMatch = false) },
-                                shape = CircleShape,
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(68.dp)
+                            // Centered Pass & Match buttons
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Pass",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(36.dp)
-                                )
+                                // Pass Button (Red X)
+                                Button(
+                                    onClick = { triggerSwipe(isMatch = false) },
+                                    shape = CircleShape,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.size(68.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Pass",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(28.dp))
+
+                                // Match Button (Green Heart)
+                                Button(
+                                    onClick = { triggerSwipe(isMatch = true) },
+                                    shape = CircleShape,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.size(68.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Favorite,
+                                        contentDescription = "Favorite Match",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
                             }
 
-                            // Match Button (Green Heart)
-                            Button(
-                                onClick = { triggerSwipe(isMatch = true) },
-                                shape = CircleShape,
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(68.dp)
+                            // Small Green Tag Button positioned to the right
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Favorite,
-                                    contentDescription = "Favorite Match",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(36.dp)
-                                )
+                                Button(
+                                    onClick = { showMatchTagDialog = true },
+                                    shape = CircleShape,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Label,
+                                        contentDescription = "Tag & Like",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                             }
                         }
                     }
+                }
+            }
+        }
+
+        if (showMatchTagDialog && currentCard != null) {
+            val artistUserTags by viewModel.artistUserTags.collectAsStateWithLifecycle()
+            val artistToTags by viewModel.artistToTags.collectAsStateWithLifecycle()
+            val favoriteArtistNames by viewModel.favoriteArtistNames.collectAsStateWithLifecycle()
+
+            val artistItemCounts = remember(artistUserTags, artistToTags, favoriteArtistNames) {
+                artistUserTags.associateWith { tag ->
+                    favoriteArtistNames.count { name ->
+                        artistToTags[name]?.contains(tag) == true
+                    }
+                }
+            }
+
+            TagManagementDialog(
+                title = "Tag Artist & Like",
+                allTags = artistUserTags,
+                initialSelectedTags = artistToTags[currentCard.fileName] ?: emptySet(),
+                itemCounts = artistItemCounts,
+                confirmButtonText = "Apply tags & Like",
+                itemTypeName = "favorite artists",
+                onCreateTag = { viewModel.createArtistTag(it) },
+                onDeleteTag = { viewModel.deleteArtistTag(it) },
+                onRenameTag = { oldTag, newTag -> viewModel.renameArtistTag(oldTag, newTag) },
+                onConfirm = { selectedTags ->
+                    showMatchTagDialog = false
+                    viewModel.setArtistTags(currentCard.fileName, selectedTags)
+                    triggerSwipe(isMatch = true)
+                },
+                onDismiss = { showMatchTagDialog = false }
+            )
+        }
+
+        // Toast Message Overlay at top center over window
+        toastMessage?.let { msg ->
+            Popup(
+                alignment = Alignment.TopCenter,
+                properties = PopupProperties(focusable = false, dismissOnClickOutside = false)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFD6D6D6)),
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.padding(top = 28.dp)
+                ) {
+                    Text(
+                        text = msg,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        ),
+                        color = Color(0xFF1F1F1F),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                    )
                 }
             }
         }

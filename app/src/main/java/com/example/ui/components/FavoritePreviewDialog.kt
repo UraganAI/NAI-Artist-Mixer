@@ -3,7 +3,10 @@ package com.example.ui.components
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +58,7 @@ fun FavoritePreviewDialog(
 
     val favoriteSet by viewModel.favoriteArtistNames.collectAsState()
     var randomArtArtistName by remember { mutableStateOf<String?>(null) }
+    var showArtistTagDialog by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -205,25 +209,68 @@ fun FavoritePreviewDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Button(
-                            onClick = {
-                                viewModel.toggleFavoriteArtist(currentArtistName)
-                            },
+                        // Split Favorite / Tag Double Button
+                        Surface(
                             shape = RoundedCornerShape(50),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = NovelAiPrimary,
-                                contentColor = NovelAiOnPrimary
-                            ),
+                            color = NovelAiPrimary,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(
-                                imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = NovelAiOnPrimary
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Favorite", fontSize = 12.sp, color = NovelAiOnPrimary, fontWeight = FontWeight.Bold)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(38.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Left half: Favorite
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .clickable {
+                                            viewModel.toggleFavoriteArtist(currentArtistName)
+                                        },
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = NovelAiOnPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text("Favorite", fontSize = 11.sp, color = NovelAiOnPrimary, fontWeight = FontWeight.Bold)
+                                }
+
+                                // Divider
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .fillMaxHeight(0.6f)
+                                        .background(NovelAiOnPrimary.copy(alpha = 0.4f))
+                                )
+
+                                // Right half: Tag
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .clickable {
+                                            showArtistTagDialog = true
+                                        },
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Label,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = NovelAiOnPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text("Tag", fontSize = 11.sp, color = NovelAiOnPrimary, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
 
                         Button(
@@ -372,6 +419,39 @@ fun FavoritePreviewDialog(
                 RandomArtDialog(
                     artistName = artistName,
                     onDismiss = { randomArtArtistName = null }
+                )
+            }
+
+            if (showArtistTagDialog) {
+                val currentArtistName = favoritesList[pagerState.currentPage.coerceIn(favoritesList.indices)]
+                val artistUserTags by viewModel.artistUserTags.collectAsStateWithLifecycle()
+                val artistToTags by viewModel.artistToTags.collectAsStateWithLifecycle()
+                val favoriteArtistNames by viewModel.favoriteArtistNames.collectAsStateWithLifecycle()
+
+                val artistItemCounts = remember(artistUserTags, artistToTags, favoriteArtistNames) {
+                    artistUserTags.associateWith { tag ->
+                        favoriteArtistNames.count { name ->
+                            artistToTags[name]?.contains(tag) == true
+                        }
+                    }
+                }
+
+                TagManagementDialog(
+                    title = "Tag Artist",
+                    allTags = artistUserTags,
+                    initialSelectedTags = artistToTags[currentArtistName] ?: emptySet(),
+                    itemCounts = artistItemCounts,
+                    confirmButtonText = "Apply tags & Favorite",
+                    itemTypeName = "favorite artists",
+                    onCreateTag = { viewModel.createArtistTag(it) },
+                    onDeleteTag = { viewModel.deleteArtistTag(it) },
+                    onRenameTag = { oldTag, newTag -> viewModel.renameArtistTag(oldTag, newTag) },
+                    onConfirm = { selectedTags ->
+                        showArtistTagDialog = false
+                        viewModel.setArtistTags(currentArtistName, selectedTags)
+                        viewModel.addFavoriteArtist(currentArtistName)
+                    },
+                    onDismiss = { showArtistTagDialog = false }
                 )
             }
         }

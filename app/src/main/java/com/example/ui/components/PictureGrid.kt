@@ -15,12 +15,16 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.filled.Label
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -29,7 +33,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import com.example.util.mouseWheelScrollGrid
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
@@ -96,6 +103,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -114,9 +127,13 @@ fun PictureGrid(
     availablePictures: List<PictureItem> = emptyList(),
     favoriteArtistNames: Set<String> = emptySet(),
     viewModel: MainViewModel? = null,
+    hideSearch: Boolean = false,
+    containerHeight: androidx.compose.ui.unit.Dp = 390.dp,
+    useScrollableContainer: Boolean = false,
     onRerollItem: (Int) -> Unit = {},
     onToggleLock: (Int) -> Unit = {},
     onToggleFavorite: (String) -> Unit = {},
+    onRemoveItem: (Int) -> Unit = { index -> viewModel?.removePictureAt(index) },
     onAddManualPicture: (PictureItem) -> Unit = {},
     onMoveItem: (fromIndex: Int, toIndex: Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
@@ -126,10 +143,14 @@ fun PictureGrid(
     var searchQuery by remember { mutableStateOf("") }
     var showSearchResults by remember { mutableStateOf(false) }
 
-    val filteredAvailable = remember(searchQuery, availablePictures) {
-        if (searchQuery.trim().length >= 2) {
-            availablePictures.filter {
-                it.fileName.contains(searchQuery.trim(), ignoreCase = true)
+    val artistToTags by viewModel?.artistToTags?.collectAsStateWithLifecycle(emptyMap()) ?: remember { mutableStateOf(emptyMap()) }
+
+    val filteredAvailable = remember(searchQuery, availablePictures, artistToTags) {
+        val query = searchQuery.trim()
+        if (query.length >= 2) {
+            availablePictures.filter { picture ->
+                picture.fileName.contains(query, ignoreCase = true) ||
+                        (artistToTags[picture.fileName]?.any { tag -> tag.contains(query, ignoreCase = true) } == true)
             }.take(10)
         } else {
             emptyList()
@@ -156,16 +177,48 @@ fun PictureGrid(
             Text(
                 text = "Tap to view • Hold & drag to move",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         // Search Bar for Manually Adding Pictures / Artists
-        if (availablePictures.isNotEmpty()) {
+        if (!hideSearch && availablePictures.isNotEmpty()) {
+            var searchBoxTopInWindow by remember { mutableFloatStateOf(0f) }
+            var searchBoxHeightPx by remember { mutableIntStateOf(0) }
+            var windowHeightPx by remember { mutableIntStateOf(0) }
+
+            val density = LocalDensity.current
+            val imeBottomPx = WindowInsets.ime.getBottom(density)
+            val visibleScreenBottomPx = if (windowHeightPx > 0) windowHeightPx - imeBottomPx else 2000
+
+            val spaceAbovePx = searchBoxTopInWindow
+            val spaceBelowPx = visibleScreenBottomPx - (searchBoxTopInWindow + searchBoxHeightPx)
+
+            val neededHeightPx = with(density) { 220.dp.toPx() }
+            val expandAbove = spaceAbovePx >= with(density) { 160.dp.toPx() } || spaceAbovePx >= spaceBelowPx
+
+            val maxPopupHeightPx = if (expandAbove) {
+                minOf(neededHeightPx, maxOf(with(density) { 100.dp.toPx() }, spaceAbovePx - with(density) { 16.dp.toPx() }))
+            } else {
+                minOf(neededHeightPx, maxOf(with(density) { 100.dp.toPx() }, spaceBelowPx - with(density) { 16.dp.toPx() }))
+            }
+            val maxPopupHeightDp = with(density) { maxPopupHeightPx.toDp() }
+
+            val popupOffsetY = if (expandAbove) {
+                -(maxPopupHeightPx + with(density) { 8.dp.toPx() }).toInt()
+            } else {
+                searchBoxHeightPx + with(density) { 4.dp.toPx() }.toInt()
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 10.dp)
+                    .onGloballyPositioned { coordinates ->
+                        searchBoxTopInWindow = coordinates.positionInWindow().y
+                        searchBoxHeightPx = coordinates.size.height
+                        windowHeightPx = coordinates.findRootCoordinates().size.height
+                    }
             ) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -178,7 +231,7 @@ fun PictureGrid(
                         .testTag("picture_search_input"),
                     placeholder = {
                         Text(
-                            "Search an artist...",
+                            "Search an artist or a tag...",
                             style = MaterialTheme.typography.bodyMedium,
                             fontSize = 13.sp
                         )
@@ -217,14 +270,14 @@ fun PictureGrid(
                 if (showSearchResults && filteredAvailable.isNotEmpty()) {
                     Popup(
                         alignment = Alignment.TopStart,
-                        offset = IntOffset(0, 140),
+                        offset = IntOffset(0, popupOffsetY),
                         properties = PopupProperties(focusable = false),
                         onDismissRequest = { showSearchResults = false }
                     ) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth(0.95f)
-                                .heightIn(max = 240.dp),
+                                .heightIn(max = maxPopupHeightDp),
                             shape = RoundedCornerShape(16.dp),
                             tonalElevation = 8.dp,
                             shadowElevation = 8.dp,
@@ -233,6 +286,12 @@ fun PictureGrid(
                         ) {
                             LazyColumn(modifier = Modifier.padding(vertical = 4.dp)) {
                                 items(filteredAvailable) { picture ->
+                                    val isFav = favoriteArtistNames.contains(picture.fileName)
+                                    val query = searchQuery.trim()
+                                    val matchingTag = if (query.length >= 2) {
+                                        artistToTags[picture.fileName]?.firstOrNull { it.contains(query, ignoreCase = true) }
+                                    } else null
+
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -241,25 +300,60 @@ fun PictureGrid(
                                                 searchQuery = ""
                                                 showSearchResults = false
                                             }
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            .padding(start = 16.dp, top = 2.dp, bottom = 2.dp, end = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(
-                                            text = picture.fileName,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = "Add artist",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = picture.fileName,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            if (isFav) {
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Icon(
+                                                    imageVector = Icons.Default.Favorite,
+                                                    contentDescription = "Favorite",
+                                                    tint = Color.Red,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                        }
+
+                                        if (matchingTag != null) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Tag: $matchingTag",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        IconButton(
+                                            onClick = {
+                                                onAddManualPicture(picture)
+                                            },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = "Add artist",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -270,10 +364,16 @@ fun PictureGrid(
         }
 
         // Container with Light Outline
+        val gridState = rememberLazyGridState()
+
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(390.dp),
+            modifier = if (useScrollableContainer) {
+                Modifier
+                    .fillMaxWidth()
+                    .height(containerHeight)
+            } else {
+                Modifier.fillMaxWidth()
+            },
             shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
@@ -281,7 +381,7 @@ fun PictureGrid(
             if (pictures.isEmpty()) {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
@@ -299,12 +399,14 @@ fun PictureGrid(
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
-            } else {
+            } else if (useScrollableContainer) {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 96.dp),
+                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 96.dp),
+                    state = gridState,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(8.dp)
+                        .mouseWheelScrollGrid(gridState)
                         .testTag("selected_pictures_grid"),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -317,24 +419,66 @@ fun PictureGrid(
                             index = index + 1,
                             totalCount = pictures.size,
                             isFavorite = isFav,
-                            onClick = {
-                                previewIndex = index
-                            },
-                            onMoveLeft = {
-                                if (index > 0) {
-                                    onMoveItem(index, index - 1)
-                                }
-                            },
-                            onMoveRight = {
-                                if (index < pictures.size - 1) {
-                                    onMoveItem(index, index + 1)
-                                }
-                            },
+                            gridState = gridState,
+                            onClick = { previewIndex = index },
+                            onMoveLeft = { if (index > 0) onMoveItem(index, index - 1) },
+                            onMoveRight = { if (index < pictures.size - 1) onMoveItem(index, index + 1) },
                             onReroll = { onRerollItem(index) },
                             onToggleLock = { onToggleLock(index) },
                             onToggleFavorite = { onToggleFavorite(picture.fileName) },
+                            onRemove = { onRemoveItem(index) },
                             onMoveItem = onMoveItem
                         )
+                    }
+                }
+            } else {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .testTag("selected_pictures_grid")
+                ) {
+                    val minSize = 96.dp
+                    val spacing = 8.dp
+                    val cols = ((maxWidth + spacing) / (minSize + spacing)).toInt().coerceAtLeast(1)
+                    val rows = pictures.chunked(cols)
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(spacing),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        rows.forEachIndexed { rowIndex, rowItems ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(spacing),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                rowItems.forEachIndexed { colIndex, picture ->
+                                    val index = rowIndex * cols + colIndex
+                                    val isFav = favoriteArtistNames.contains(picture.fileName)
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        PictureGridCard(
+                                            picture = picture,
+                                            index = index + 1,
+                                            totalCount = pictures.size,
+                                            isFavorite = isFav,
+                                            gridState = gridState,
+                                            onClick = { previewIndex = index },
+                                            onMoveLeft = { if (index > 0) onMoveItem(index, index - 1) },
+                                            onMoveRight = { if (index < pictures.size - 1) onMoveItem(index, index + 1) },
+                                            onReroll = { onRerollItem(index) },
+                                            onToggleLock = { onToggleLock(index) },
+                                            onToggleFavorite = { onToggleFavorite(picture.fileName) },
+                                            onRemove = { onRemoveItem(index) },
+                                            onMoveItem = onMoveItem
+                                        )
+                                    }
+                                }
+                                val emptySlots = cols - rowItems.size
+                                repeat(emptySlots) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -362,12 +506,14 @@ fun PictureGridCard(
     index: Int,
     totalCount: Int,
     isFavorite: Boolean,
+    gridState: LazyGridState? = null,
     onClick: () -> Unit,
     onMoveLeft: () -> Unit,
     onMoveRight: () -> Unit,
     onReroll: () -> Unit,
     onToggleLock: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onRemove: () -> Unit = {},
     onMoveItem: (fromIndex: Int, toIndex: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -380,6 +526,25 @@ fun PictureGridCard(
     val currentIndexState by rememberUpdatedState(index)
     val totalCountState by rememberUpdatedState(totalCount)
     val currentOnMoveItem by rememberUpdatedState(onMoveItem)
+
+    LaunchedEffect(isDragging) {
+        if (isDragging && gridState != null) {
+            while (isDragging) {
+                if (dragOffsetY > 70f) {
+                    val scrolled = gridState.scrollBy(14f)
+                    if (scrolled > 0f) {
+                        dragOffsetY += scrolled
+                    }
+                } else if (dragOffsetY < -70f) {
+                    val scrolled = gridState.scrollBy(-14f)
+                    if (scrolled < 0f) {
+                        dragOffsetY += scrolled
+                    }
+                }
+                kotlinx.coroutines.delay(16)
+            }
+        }
+    }
 
     Card(
         modifier = modifier
@@ -394,6 +559,34 @@ fun PictureGridCard(
             }
             .clip(RoundedCornerShape(14.dp))
             .pointerInput(picture.id) {
+                val cardSizePx = 105.dp.toPx()
+                val rowHeightPx = 115.dp.toPx()
+
+                val performReorder = {
+                    val currentZeroBased = currentIndexState - 1
+                    val total = totalCountState
+
+                    val colShift = (dragOffsetX / cardSizePx).let {
+                        if (it >= 0) kotlin.math.floor(it + 0.4f).toInt()
+                        else kotlin.math.ceil(it - 0.4f).toInt()
+                    }
+                    val rowShift = (dragOffsetY / rowHeightPx).let {
+                        if (it >= 0) kotlin.math.floor(it + 0.4f).toInt()
+                        else kotlin.math.ceil(it - 0.4f).toInt()
+                    }
+
+                    val totalShift = colShift + (rowShift * 3)
+                    val targetIndex = (currentZeroBased + totalShift).coerceIn(0, total - 1)
+
+                    if (targetIndex != currentZeroBased && total > 1) {
+                        currentOnMoveItem.invoke(currentZeroBased, targetIndex)
+                    }
+
+                    isDragging = false
+                    dragOffsetX = 0f
+                    dragOffsetY = 0f
+                }
+
                 detectDragGesturesAfterLongPress(
                     onDragStart = {
                         isDragging = true
@@ -401,43 +594,15 @@ fun PictureGridCard(
                         dragOffsetY = 0f
                     },
                     onDragEnd = {
-                        isDragging = false
-                        dragOffsetX = 0f
-                        dragOffsetY = 0f
+                        performReorder()
                     },
                     onDragCancel = {
-                        isDragging = false
-                        dragOffsetX = 0f
-                        dragOffsetY = 0f
+                        performReorder()
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
                         dragOffsetX += dragAmount.x
                         dragOffsetY += dragAmount.y
-
-                        val currentZeroBased = currentIndexState - 1
-                        val total = totalCountState
-                        val threshold = 220f
-
-                        if (dragOffsetX > threshold && currentZeroBased < total - 1) {
-                            currentOnMoveItem.invoke(currentZeroBased, currentZeroBased + 1)
-                            dragOffsetX = 0f
-                            dragOffsetY = 0f
-                        } else if (dragOffsetX < -threshold && currentZeroBased > 0) {
-                            currentOnMoveItem.invoke(currentZeroBased, currentZeroBased - 1)
-                            dragOffsetX = 0f
-                            dragOffsetY = 0f
-                        } else if (dragOffsetY > threshold + 30f && currentZeroBased + 2 < total) {
-                            val target = (currentZeroBased + 3).coerceAtMost(total - 1)
-                            currentOnMoveItem.invoke(currentZeroBased, target)
-                            dragOffsetX = 0f
-                            dragOffsetY = 0f
-                        } else if (dragOffsetY < -threshold - 30f && currentZeroBased - 2 >= 0) {
-                            val target = (currentZeroBased - 3).coerceAtLeast(0)
-                            currentOnMoveItem.invoke(currentZeroBased, target)
-                            dragOffsetX = 0f
-                            dragOffsetY = 0f
-                        }
                     }
                 )
             }
@@ -458,7 +623,7 @@ fun PictureGridCard(
         ),
         border = BorderStroke(
             if (isDragging) 2.5.dp else if (picture.isLocked) 2.dp else 1.dp,
-            if (isDragging) MaterialTheme.colorScheme.primary else if (picture.isLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            if (isDragging) MaterialTheme.colorScheme.primary else if (picture.isLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
         )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -513,25 +678,52 @@ fun PictureGridCard(
                 )
             }
 
-            // Top-Left Reroll Control Button
-            Surface(
+            // Top-Left Controls (Reroll and Remove 'X')
+            Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(5.dp),
-                shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.7f),
-                contentColor = Color.White
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                IconButton(
-                    onClick = onReroll,
-                    modifier = Modifier.size(28.dp)
+                // Re-roll Button
+                Surface(
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = 0.78f),
+                    contentColor = Color.White
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Autorenew,
-                        contentDescription = "Reroll picture",
-                        modifier = Modifier.size(16.dp),
-                        tint = Color.White
-                    )
+                    IconButton(
+                        onClick = onReroll,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Autorenew,
+                            contentDescription = "Reroll picture",
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+
+                // Remove ('X') Button (below Re-roll button)
+                Surface(
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = 0.78f),
+                    contentColor = Color.White
+                ) {
+                    IconButton(
+                        onClick = onRemove,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .testTag("remove_picture_button_$index")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove artist",
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.White
+                        )
+                    }
                 }
             }
 
@@ -631,6 +823,7 @@ fun ImageLightboxDialog(
     )
 
     var randomArtArtistName by remember { mutableStateOf<String?>(null) }
+    var showArtistTagDialog by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -782,26 +975,72 @@ fun ImageLightboxDialog(
                             )
                         }
 
-                        Button(
-                            onClick = { onToggleFavorite(currentPicture.fileName) },
+                        // Split Favorite / Tag Double Button
+                        val favBgColor = if (isFav) Color(0xFFE53935) else MaterialTheme.colorScheme.primary
+                        val favContentColor = if (isFav) Color.White else MaterialTheme.colorScheme.onPrimary
+
+                        Surface(
                             shape = RoundedCornerShape(50),
-                            colors = if (isFav) ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White) else ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            color = favBgColor,
                             modifier = Modifier.height(38.dp)
                         ) {
-                            Icon(
-                                imageVector = if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = if (isFav) Color.White else MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (isFav) "Fav" else "Favorite",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isFav) Color.White else MaterialTheme.colorScheme.onPrimary
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Left Half: Favorite
+                                Row(
+                                    modifier = Modifier
+                                        .clickable { onToggleFavorite(currentPicture.fileName) }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = favContentColor
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Favorite",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = favContentColor
+                                    )
+                                }
+
+                                // Divider
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .fillMaxHeight(0.6f)
+                                        .background(favContentColor.copy(alpha = 0.4f))
+                                )
+
+                                // Right Half: Tag
+                                Row(
+                                    modifier = Modifier
+                                        .clickable { showArtistTagDialog = true }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Label,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = favContentColor
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Tag",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = favContentColor
+                                    )
+                                }
+                            }
                         }
 
                         Button(
@@ -946,6 +1185,38 @@ fun ImageLightboxDialog(
                 RandomArtDialog(
                     artistName = artistName,
                     onDismiss = { randomArtArtistName = null }
+                )
+            }
+
+            // Tag Artist Dialog
+            if (showArtistTagDialog && viewModel != null) {
+                val artistUserTags by viewModel.artistUserTags.collectAsStateWithLifecycle()
+                val artistToTags by viewModel.artistToTags.collectAsStateWithLifecycle()
+                val favoriteArtistNames by viewModel.favoriteArtistNames.collectAsStateWithLifecycle()
+                val artistItemCounts = remember(artistUserTags, artistToTags) {
+                    artistUserTags.associateWith { tag ->
+                        artistToTags.values.count { it.contains(tag) }
+                    }
+                }
+
+                TagManagementDialog(
+                    title = "Tags for '${currentPicture.fileName}'",
+                    allTags = artistUserTags,
+                    initialSelectedTags = artistToTags[currentPicture.fileName] ?: emptySet(),
+                    itemCounts = artistItemCounts,
+                    confirmButtonText = "Apply tags & Favorite",
+                    itemTypeName = "favorite artists",
+                    onCreateTag = { viewModel.createArtistTag(it) },
+                    onDeleteTag = { viewModel.deleteArtistTag(it) },
+                    onRenameTag = { oldTag, newTag -> viewModel.renameArtistTag(oldTag, newTag) },
+                    onConfirm = { selectedTags ->
+                        showArtistTagDialog = false
+                        viewModel.setArtistTags(currentPicture.fileName, selectedTags)
+                        if (!favoriteArtistNames.contains(currentPicture.fileName)) {
+                            viewModel.addFavoriteArtist(currentPicture.fileName)
+                        }
+                    },
+                    onDismiss = { showArtistTagDialog = false }
                 )
             }
         }
